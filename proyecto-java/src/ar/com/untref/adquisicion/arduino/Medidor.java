@@ -10,34 +10,19 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.Enumeration;
 
-import javax.swing.JPanel;
-
 import ar.com.untref.adquisicion.arduino.entidades.Lectura;
 
-@SuppressWarnings("serial")
-public class Medicion extends JPanel implements SerialPortEventListener {
-	
-	private Ventana ventana;
-	private static Double DELTA_ERROR_TEMPERATURA = 1.0; 
-	private Lectura lecturaAnterior;
-	
-	public Medicion(Ventana ventana) {
-	
-		this.ventana = ventana;
-	}
-	
-	
-	SerialPort serialPort;
+public class Medidor implements SerialPortEventListener {
+
+	private SerialPort serialPort;
 	/** The port we're normally going to use. */
-	private static final String PORT_NAMES[] = {
-	// "/dev/tty.usbserial-A9007UX1", // Mac OS X
-	//"/dev/ttyACM1", // Raspberry Pi
-	// "/dev/ttyUSB0", // Linux
-	 "COM5", // Windows
+	private static final String PORT_NAMES[] = { "COM5", // Windows
 	};
 
-	
-	
+	private Double MARGEN_ERROR_INCLINACION = 3.0;
+	private Double MARGEN_ERROR_TEMPERATURA = 1.0;
+	private Lectura lecturaAnterior = new Lectura();
+
 	/**
 	 * A BufferedReader which will be fed by a InputStreamReader converting the
 	 * bytes into characters making the displayed results codepage independent
@@ -45,16 +30,22 @@ public class Medicion extends JPanel implements SerialPortEventListener {
 	private BufferedReader input;
 	/** The output stream to the port */
 	private OutputStream output;
+	private VentanaPrincipal ventanaPrincipal;
 	/** Milliseconds to block while waiting for port open */
 	private static final int TIME_OUT = 2000;
 	/** Default bits per second for COM port. */
 	private static final int DATA_RATE = 9600;
 
-	private void initialize() {
+	public Medidor(VentanaPrincipal ventanaPrincipal) {
+
+		this.ventanaPrincipal = ventanaPrincipal;
+	}
+
+	public void configure() {
 		// the next line is for Raspberry Pi and
 		// gets us into the while loop and was suggested here was suggested
 		// http://www.raspberrypi.org/phpBB3/viewtopic.php?f=81&t=32186
-		//System.setProperty("gnu.io.rxtx.SerialPorts", "/dev/ttyACM1");
+		// System.setProperty("gnu.io.rxtx.SerialPorts", "/dev/ttyACM1");
 
 		CommPortIdentifier portId = null;
 		Enumeration portEnum = CommPortIdentifier.getPortIdentifiers();
@@ -133,43 +124,52 @@ public class Medicion extends JPanel implements SerialPortEventListener {
 
 		Double inclinacion = new Double(parametros[0]);
 		Integer error = new Integer(parametros[1]);
-		Double aceleracionX = new Double(parametros[2]);
-		Double aceleracionY = new Double(parametros[3]);
-		Double aceleracionZ = new Double(parametros[4]);
+		Double aceleracionX = obtenerAceleracionReal(parametros);
+		Double aceleracionY = new Double(parametros[3])/ 16384;
+		Double aceleracionZ = new Double(parametros[4])/ 16384;
 		Double temperatura = new Double(parametros[5]);
 		Double giroX = new Double(parametros[6]);
 		Double giroY = new Double(parametros[7]);
 		Double giroZ = new Double(parametros[8]);
-
+		
+		Double anguloY = Math.toDegrees(Math.atan(aceleracionX/(Math.sqrt(((aceleracionY * aceleracionY) + 
+				(aceleracionZ * aceleracionZ))))));
+		
+		System.out.println("angulo Y = " + anguloY);
+		
+		Double anguloX = Math.toDegrees(Math.atan(aceleracionY/(Math.sqrt(((aceleracionX * aceleracionX) + 
+				(aceleracionZ * aceleracionZ))))));
+		
+		System.out.println("angulo X  = " + anguloX);
+		 
 		Lectura lecturaActual = new Lectura(inclinacion, error, aceleracionX,
-									  aceleracionY, aceleracionZ, temperatura,
-									  giroX, giroY, giroZ);
-		if ( lecturaAnterior==null || hayCambiosEnlectura(lecturaActual)) {
-			
-			dibujarLectura(lecturaActual);
-			lecturaAnterior = lecturaActual;
-		}
+				aceleracionY, aceleracionZ, temperatura, giroX, giroY, giroZ);
+
 		System.out.println(lecturaActual);
-	}
 
-	private boolean hayCambiosEnlectura(Lectura lecturaActual) {
+		if (Math.abs(inclinacion - lecturaAnterior.getInclinacion()) < MARGEN_ERROR_INCLINACION) {
 
-		return hayCambiosEnTemperatura(lecturaActual);
-	}
-
-	private boolean hayCambiosEnTemperatura(Lectura lecturaActual) {
-
-		return Math.abs(lecturaAnterior.getTemperatura()- lecturaActual.getTemperatura()) > DELTA_ERROR_TEMPERATURA ;
-	}
-
-	private void dibujarLectura(Lectura lectura) {
-		ventana.mostrarTemperatura(lectura.getTemperatura().toString());
-	}
-
-	public void comenzarMedicion() {
+			lecturaActual.setInclinacion(lecturaAnterior.getInclinacion());
+		}
 		
-		this.initialize();		
+		if (Math.abs(temperatura - lecturaAnterior.getTemperatura()) < MARGEN_ERROR_TEMPERATURA) {
+
+			lecturaActual.setTemperatura(lecturaAnterior.getTemperatura());
+		}
 		
+		ventanaPrincipal.actualizarDatosBrujula(lecturaActual.getInclinacion());
+		ventanaPrincipal.actualizarDatosTemperatura(lecturaActual.getTemperatura());
+
+		lecturaAnterior = lecturaActual;
+	}
+
+	private double obtenerAceleracionReal(String[] parametros) {
+		return new Double(parametros[2])/ 16384;
+	}
+
+	public void iniciar() throws Exception {
+
+		configure();
 		Thread t = new Thread() {
 			public void run() {
 				// the following line will keep this app alive for 1000 seconds,

@@ -4,15 +4,15 @@ public class Lectura {
 
 	// 257.36|2|0|2292|8694|95.332|1|2|-5888
 
-	private Double inclinacion;
-	private Integer error;
-	private Double aceleracionX;
-	private Double aceleracionY;
-	private Double aceleracionZ;
-	private Double temperatura;
-	private Double giroX;
-	private Double giroY;
-	private Double giroZ;
+	private Double inclinacion = 0.0;
+	private Integer error = 0;
+	private Double aceleracionX = 0.0;
+	private Double aceleracionY = 0.0;
+	private Double aceleracionZ = 0.0;
+	private Double temperatura = 0.0;
+	private Double giroX = 0.0;
+	private Double giroY = 0.0;
+	private Double giroZ = 0.0;
 	
 	public Lectura(){}
 	

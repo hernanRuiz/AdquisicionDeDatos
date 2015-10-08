@@ -33,7 +33,7 @@ import com.sun.j3d.utils.geometry.Sphere;
 import com.sun.j3d.utils.universe.SimpleUniverse;
 
 public class Energon extends JPanel implements KeyListener {
-	
+
 	int s = 0;
 	int count = 0;
 	float xLoc = 0f;
@@ -259,7 +259,7 @@ public class Energon extends JPanel implements KeyListener {
 			transformGroup.setTransform(transVieja);
 		}
 
-		if (e.getKeyChar() == 'a') {
+		if (e.getKeyChar() == 'w') {
 			xLoc = xLoc - 0.1f;
 			
 			Transform3D transVieja = new Transform3D();
@@ -282,3 +282,4 @@ public class Energon extends JPanel implements KeyListener {
 
 	}
 }
+
