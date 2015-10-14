@@ -10,6 +10,7 @@ import javax.swing.SwingWorker;
 import javax.swing.JTextField;
 import javax.swing.JProgressBar;
 
+import ar.com.untref.adquisicion.arduino.entidades.Punto3D;
 import ar.com.untref.adquisicion.arduino.utils.GraficadorTermometro;
 
 @SuppressWarnings("serial")
@@ -25,6 +26,9 @@ public class VentanaPrincipal extends JFrame {
 	private JLabel labelTemperatura;
 	private JProgressBar progressBarTemperatura;
 	private int MAXIMO_TEMPERATURA = 60;
+	private JTextField textFieldX;
+	private JTextField textFieldY;
+	private JTextField textFieldZ;
 
 	public VentanaPrincipal() {
 		
@@ -103,6 +107,51 @@ public class VentanaPrincipal extends JFrame {
 		progressBarTemperatura.setBounds(335, 105, 89, 14);
 		getContentPane().add(progressBarTemperatura);
 		
+		JLabel lblPosi = new JLabel("Posici\u00F3n (X)");
+		lblPosi.setHorizontalAlignment(SwingConstants.CENTER);
+		lblPosi.setFont(new Font("Tahoma", Font.PLAIN, 12));
+		lblPosi.setBackground(Color.WHITE);
+		lblPosi.setBounds(119, 156, 99, 36);
+		getContentPane().add(lblPosi);
+		
+		textFieldX = new JTextField();
+		textFieldX.setText("0");
+		textFieldX.setHorizontalAlignment(SwingConstants.CENTER);
+		textFieldX.setFont(new Font("Tahoma", Font.PLAIN, 13));
+		textFieldX.setColumns(10);
+		textFieldX.setBounds(131, 192, 83, 36);
+		getContentPane().add(textFieldX);
+		
+		JLabel lblPosiciny = new JLabel("Posici\u00F3n (Y)");
+		lblPosiciny.setHorizontalAlignment(SwingConstants.CENTER);
+		lblPosiciny.setFont(new Font("Tahoma", Font.PLAIN, 12));
+		lblPosiciny.setBackground(Color.WHITE);
+		lblPosiciny.setBounds(226, 156, 99, 36);
+		getContentPane().add(lblPosiciny);
+		
+		textFieldY = new JTextField();
+		textFieldY.setText("0");
+		textFieldY.setHorizontalAlignment(SwingConstants.CENTER);
+		textFieldY.setFont(new Font("Tahoma", Font.PLAIN, 13));
+		textFieldY.setColumns(10);
+		textFieldY.setBounds(232, 192, 83, 36);
+		getContentPane().add(textFieldY);
+		
+		JLabel lblPosicinz = new JLabel("Posici\u00F3n (Z)");
+		lblPosicinz.setHorizontalAlignment(SwingConstants.CENTER);
+		lblPosicinz.setFont(new Font("Tahoma", Font.PLAIN, 12));
+		lblPosicinz.setBackground(Color.WHITE);
+		lblPosicinz.setBounds(325, 156, 99, 36);
+		getContentPane().add(lblPosicinz);
+		
+		textFieldZ = new JTextField();
+		textFieldZ.setText("0");
+		textFieldZ.setHorizontalAlignment(SwingConstants.CENTER);
+		textFieldZ.setFont(new Font("Tahoma", Font.PLAIN, 13));
+		textFieldZ.setColumns(10);
+		textFieldZ.setBounds(335, 192, 83, 36);
+		getContentPane().add(textFieldZ);
+		
 		tomarMedidas();
 	}
 
@@ -162,6 +211,15 @@ public class VentanaPrincipal extends JFrame {
 		
 		labelBrujula.setText(angulo.toString());
 	}
+	
+	
+	public void actualizarDatosPosicion(Punto3D posicion){
+		
+		textFieldX.setText(posicion.getX().toString());
+		textFieldY.setText(posicion.getY().toString());
+		textFieldZ.setText(posicion.getZ().toString());
+	}
+	
 
 	void actualizarDatosTemperatura(Double temperatura) {
 

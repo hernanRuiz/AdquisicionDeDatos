@@ -11,6 +11,8 @@ import java.io.OutputStream;
 import java.util.Enumeration;
 
 import ar.com.untref.adquisicion.arduino.entidades.Lectura;
+import ar.com.untref.adquisicion.arduino.entidades.Medicion;
+import ar.com.untref.adquisicion.arduino.entidades.Punto3D;
 
 public class Medidor implements SerialPortEventListener {
 
@@ -19,8 +21,10 @@ public class Medidor implements SerialPortEventListener {
 	private static final String PORT_NAMES[] = { "COM5", // Windows
 	};
 
-	private Double MARGEN_ERROR_INCLINACION = 3.0;
+	private final Double SEGUNDOS_ENTRE_MEDICIONES = 1.0;
+	private final Double MARGEN_ERROR_INCLINACION = 3.0;
 	private Double MARGEN_ERROR_TEMPERATURA = 1.0;
+	private Double MARGEN_ERROR_ACELERACION = 0.2;
 	private Lectura lecturaAnterior = new Lectura();
 
 	/**
@@ -31,6 +35,10 @@ public class Medidor implements SerialPortEventListener {
 	/** The output stream to the port */
 	private OutputStream output;
 	private VentanaPrincipal ventanaPrincipal;
+	private Medicion medicionAnterior;
+	private boolean hayCambioEnAceleracionX;
+	private boolean hayCambioEnAceleracionY;
+	private boolean hayCambioEnAceleracionZ;
 	/** Milliseconds to block while waiting for port open */
 	private static final int TIME_OUT = 2000;
 	/** Default bits per second for COM port. */
@@ -120,28 +128,34 @@ public class Medidor implements SerialPortEventListener {
 
 	private void leerDatos(String inputLine) {
 
+		hayCambioEnAceleracionX = true;
+		hayCambioEnAceleracionY = true;
+		hayCambioEnAceleracionZ = true;
+		
 		String[] parametros = inputLine.split("\\|");
 
 		Double inclinacion = new Double(parametros[0]);
 		Integer error = new Integer(parametros[1]);
 		Double aceleracionX = obtenerAceleracionReal(parametros);
-		Double aceleracionY = new Double(parametros[3])/ 16384;
-		Double aceleracionZ = new Double(parametros[4])/ 16384;
+		Double aceleracionY = new Double(parametros[3]) / 16384;
+		Double aceleracionZ = new Double(parametros[4]) / 16384;
 		Double temperatura = new Double(parametros[5]);
 		Double giroX = new Double(parametros[6]);
 		Double giroY = new Double(parametros[7]);
 		Double giroZ = new Double(parametros[8]);
-		
-		Double anguloY = Math.toDegrees(Math.atan(aceleracionX/(Math.sqrt(((aceleracionY * aceleracionY) + 
-				(aceleracionZ * aceleracionZ))))));
-		
+
+		Double anguloY = Math
+				.toDegrees(Math.atan(aceleracionX
+						/ (Math.sqrt(((aceleracionY * aceleracionY) + (aceleracionZ * aceleracionZ))))));
+
 		System.out.println("angulo Y = " + anguloY);
-		
-		Double anguloX = Math.toDegrees(Math.atan(aceleracionY/(Math.sqrt(((aceleracionX * aceleracionX) + 
-				(aceleracionZ * aceleracionZ))))));
-		
+
+		Double anguloX = Math
+				.toDegrees(Math.atan(aceleracionY
+						/ (Math.sqrt(((aceleracionX * aceleracionX) + (aceleracionZ * aceleracionZ))))));
+
 		System.out.println("angulo X  = " + anguloX);
-		 
+
 		Lectura lecturaActual = new Lectura(inclinacion, error, aceleracionX,
 				aceleracionY, aceleracionZ, temperatura, giroX, giroY, giroZ);
 
@@ -151,20 +165,94 @@ public class Medidor implements SerialPortEventListener {
 
 			lecturaActual.setInclinacion(lecturaAnterior.getInclinacion());
 		}
-		
+
 		if (Math.abs(temperatura - lecturaAnterior.getTemperatura()) < MARGEN_ERROR_TEMPERATURA) {
 
 			lecturaActual.setTemperatura(lecturaAnterior.getTemperatura());
 		}
+
+		if (Math.abs(aceleracionX - lecturaAnterior.getAceleracionX()) < MARGEN_ERROR_ACELERACION) {
+
+			hayCambioEnAceleracionX = false;
+			lecturaActual.setAceleracionX(lecturaAnterior.getAceleracionX());
+		}
+
+		if (Math.abs(aceleracionY - lecturaAnterior.getAceleracionY()) < MARGEN_ERROR_ACELERACION) {
+
+			hayCambioEnAceleracionY = false;
+			lecturaActual.setAceleracionY(lecturaAnterior.getAceleracionY());
+		}
+		
+		if (Math.abs(aceleracionZ - lecturaAnterior.getAceleracionZ()) < MARGEN_ERROR_ACELERACION) {
+
+			hayCambioEnAceleracionZ = false;
+			lecturaActual.setAceleracionZ(lecturaAnterior.getAceleracionZ());
+		}
 		
 		ventanaPrincipal.actualizarDatosBrujula(lecturaActual.getInclinacion());
-		ventanaPrincipal.actualizarDatosTemperatura(lecturaActual.getTemperatura());
+		ventanaPrincipal.actualizarDatosTemperatura(lecturaActual
+				.getTemperatura());
 
+		Medicion medicionActual = obtenerMedicion(lecturaActual);
+
+		ventanaPrincipal.actualizarDatosPosicion(medicionActual.getPosicion());
+		
 		lecturaAnterior = lecturaActual;
+		medicionAnterior = medicionActual;
 	}
 
+	private Medicion obtenerMedicion(Lectura lectura) {
+
+		Medicion medicionActual = new Medicion(new Punto3D(), new Punto3D());
+
+		if (medicionAnterior != null) {
+
+			medicionActual = calcularMedicion(medicionAnterior, lectura);
+		}
+
+		return medicionActual;
+	}
+
+	private Medicion calcularMedicion(Medicion medicionAnterior,
+			Lectura lecturaActual) {
+
+		Double velocidadActualX = medicionAnterior.getVelocidad().getX();
+		Double posicionActualX = medicionAnterior.getPosicion().getX();
+		
+		Double velocidadActualY = medicionAnterior.getVelocidad().getY();
+		Double posicionActualY = medicionAnterior.getPosicion().getY();
+		
+		Double velocidadActualZ = medicionAnterior.getVelocidad().getZ();
+		Double posicionActualZ = medicionAnterior.getPosicion().getZ();
+		
+		if ( hayCambioEnAceleracionX ){
+			velocidadActualX += lecturaActual.getAceleracionX() * SEGUNDOS_ENTRE_MEDICIONES;
+			posicionActualX += velocidadActualX * SEGUNDOS_ENTRE_MEDICIONES;
+		}
+		
+		if ( hayCambioEnAceleracionY ){
+			velocidadActualY += lecturaActual.getAceleracionY() * SEGUNDOS_ENTRE_MEDICIONES;
+			posicionActualY += velocidadActualY * SEGUNDOS_ENTRE_MEDICIONES;
+		}
+		
+		if ( hayCambioEnAceleracionZ ){
+			velocidadActualZ += lecturaActual.getAceleracionZ() * SEGUNDOS_ENTRE_MEDICIONES;
+			posicionActualZ += velocidadActualZ * SEGUNDOS_ENTRE_MEDICIONES;
+		}
+
+		Punto3D posicionActual = new Punto3D(posicionActualX, posicionActualY, posicionActualZ);
+		Punto3D velocidadActual = new Punto3D(velocidadActualX, velocidadActualY, velocidadActualZ);
+		
+		return new Medicion( posicionActual, velocidadActual);
+	}
+
+	/**
+	 * 
+	 * @param parametros
+	 * @return devuelve la aceleracion en metros / segundo cuadrado
+	 */
 	private double obtenerAceleracionReal(String[] parametros) {
-		return new Double(parametros[2])/ 16384;
+		return new Double(parametros[2]) / 16384;
 	}
 
 	public void iniciar() throws Exception {
@@ -176,7 +264,7 @@ public class Medidor implements SerialPortEventListener {
 				// waiting for events to occur and responding to them (printing
 				// incoming messages to console).
 				try {
-					Thread.sleep(1000000);
+					Thread.sleep(1000 * 1000);
 				} catch (InterruptedException ie) {
 				}
 			}
